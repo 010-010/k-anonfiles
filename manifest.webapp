@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "name": "K-AnonFiles",
+  "description": "Unoffical AnonFiles client for KaiOS. Upload your files anonymously and free on AnonFiles. AnonFiles offer you 20 GB filesize limit and unlimited bandwidth",
+  "launch_path": "/index.html",
+  "theme": "#873eff",
+  "theme_color": "#873eff",
+  "background_color": "#873eff",
+  "categories": [
+    "utilitiese"
+  ],
+  "icons": {
+    "56": "/icons/icon56x56.png",
+    "112": "/icons/icon112x112.png"
+  },
+  "developer": {
+    "name": "arma7x",
+    "url": "https://www.kaiostech.com"
+  },
+  "origin": "app://k-anonfiles.arma7x.com",
+  "type": "privileged",
+  "permissions": {
+    "device-storage:sdcard":{
+      "access": "readwrite"
+    },
+    "systemXHR": {
+      "description": "Required to load remote content"
+    }
+  },
+  "locales": {
+    "en-US": {
+      "name": "K-AnonFiles",
+      "subtitle": "Unoffical AnonFiles client for KaiOS. Upload your files anonymously and free on AnonFiles. AnonFiles offer you 20 GB filesize limit and unlimited bandwidth",
+      "description": "Unoffical AnonFiles client for KaiOS. Upload your files anonymously and free on AnonFiles. AnonFiles offer you 20 GB filesize limit and unlimited bandwidth"
+    }
+  },
+  "default_locale": "en-US"
+}

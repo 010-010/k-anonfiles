@@ -1,0 +1,17 @@
+<div class="kui-flex-wrap">
+  <style>
+    pre {
+      white-space: nowrap; 
+      width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  </style>
+  <ul class="kui-list kai-container">
+    {{#files}}
+    <li class="fileNav kui-divider">
+        <pre style="font-size:14px;">{{ name }}</pre>
+    </li>
+    {{/files}}
+  </ul>
+</div>
