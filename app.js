@@ -155,21 +155,44 @@ window.addEventListener("load", function() {
             this.setData({ files: result });
           },
         },
-        softKeyText: { left: 'Info', center: 'UPLOAD', right: 'Search' },
+        softKeyText: { left: 'More', center: 'UPLOAD', right: 'Search' },
         softKeyListener: {
           left: function() {
             if (this.verticalNavIndex > -1 && this.data.files.length > 0) {
               const f = this.data.files[this.verticalNavIndex];
               if (f) {
-                const DS = new DataStorage(() => {}, () => {}, false);
-                DS.getFile(f.path, (properties) => {
-                  console.log(properties);
-                  var content = `<div style="font-size:90%"><h5>Name</h5><p>${f.name}</p><h5 style="margin-top:3px;">Path</h5><p>${f.path}</p><h5 style="margin-top:3px;">Last Modified</h5><p>${new Date(properties.lastModifiedDate).toLocaleString()}</p><h5 style="margin-top:3px;">Size</h5><p>${humanFileSize(properties.size)}</p></div>`;
-                  this.$router.showDialog('File Info', content, null, 'Close', () => {}, ' ', () => {}, ' ', () => {}, () => {});
-                  DS.destroy();
-                }, () => {
-                  DS.destroy();
-                })
+                var menu = [
+                  {'text': 'File Info'},
+                ]
+                if (['audio', 'video', 'image'].indexOf(title.toLowerCase()) > -1) {
+                  menu = [{'text': 'Open'}, ...menu];
+                }
+                this.$router.showOptionMenu('More', menu, 'SELECT', (selected) => {
+                  if (selected.text === 'Open') {
+                    const DS = new DataStorage(() => {}, () => {}, false);
+                    DS.getFile(f.path, (properties) => {
+                      var _launcher = new MozActivity({
+                        name: "open",
+                        data: {
+                          blob: properties,
+                          type: properties.type
+                        }
+                      });
+                    }, (_err) => {
+                      console.log(_err);
+                    });
+                  } else if (selected.text === 'File Info') {
+                    const DS = new DataStorage(() => {}, () => {}, false);
+                    DS.getFile(f.path, (properties) => {
+                      console.log(properties);
+                      var content = `<div style="font-size:90%"><h5>Name</h5><p>${f.name}</p><h5 style="margin-top:3px;">Path</h5><p>${f.path}</p><h5 style="margin-top:3px;">Last Modified</h5><p>${new Date(properties.lastModifiedDate).toLocaleString()}</p><h5 style="margin-top:3px;">Size</h5><p>${humanFileSize(properties.size)}</p></div>`;
+                      this.$router.showDialog('File Info', content, null, 'Close', () => {}, ' ', () => {}, ' ', () => {}, () => {});
+                      DS.destroy();
+                    }, () => {
+                      DS.destroy();
+                    })
+                  }
+                }, () => {});
               }
             }
           },
