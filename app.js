@@ -55,19 +55,44 @@ const xhr = function(method, url, data={}, query={}, headers={}) {
   });
 }
 
-function upload() {
-    const client = new XMLHttpRequest({ mozSystem: true });
-    const file = new Blob([JSON.stringify({time: new Date().toString()}, null, 2)], {type : 'application/json'});
-    const fd = new FormData();
-    fd.append("file", file);
-    client.open("post", 'https://api.anonfiles.com/upload');
-    // client.setRequestHeader("Content-Type", "multipart/form-data");
-    client.send(fd);
-    client.onreadystatechange = () => {
-      if (client.readyState == 4 && client.status == 200) {
-         console.log(client.statusText);
-      }
+function upload($router, blob) {
+  $router.showLoading();
+  const client = new XMLHttpRequest({ mozSystem: true });
+  const fd = new FormData();
+  fd.append("file", blob);
+  client.open("post", 'https://api.anonfiles.com/upload', true);
+  client.upload.onprogress = (evt) => {
+    if (evt.lengthComputable) {
+      var percentComplete = evt.loaded / evt.total * 100;
+      $router.showToast(`${percentComplete.toFixed(2)}%`);
     }
+  };
+  client.send(fd);
+  client.onreadystatechange = () => {
+    if (client.readyState == 4 && client.status == 200) {
+      $router.hideLoading();
+      const response = JSON.parse(client.responseText);
+      localforage.getItem('ARCHIVE')
+      .then((ARCHIVE) => {
+        if (ARCHIVE == null) {
+          ARCHIVE = {};
+        }
+        response.data.file.metadata.uploaded_at = new Date().getTime();
+        ARCHIVE[response.data.file.metadata.id] = response.data.file;
+        $router.showToast('DONE');
+        return localforage.setItem('ARCHIVE', ARCHIVE);
+      });
+    }
+  }
+  client.onerror = () => {
+    $router.hideLoading();
+  }
+  client.onloadstart = () => {
+    $router.showLoading();
+  }
+  client.onloadend = () => {
+    $router.hideLoading();
+  }
 }
 
 localforage.setDriver(localforage.INDEXEDDB);
@@ -123,8 +148,26 @@ window.addEventListener("load", function() {
     }
   });
 
+  const guide = new Kai({
+    name: 'guide',
+    data: {
+      title: 'guide'
+    },
+    templateUrl: document.location.origin + '/templates/guide.html',
+    mounted: function() {
+      this.$router.setHeaderTitle('Guide');
+    },
+    unmounted: function() {},
+    methods: {},
+    softKeyText: { left: '', center: '', right: '' },
+    softKeyListener: {
+      left: function() {},
+      center: function() {},
+      right: function() {}
+    }
+  });
+
   const filesPage = function($router, title, files) {
-    console.log(title, files);
     var _files = [];
     for (var x in files) {
       const path = files[x].split('/');
@@ -178,13 +221,13 @@ window.addEventListener("load", function() {
                           type: properties.type
                         }
                       });
+                      DS.destroy();
                     }, (_err) => {
-                      console.log(_err);
+                      DS.destroy();
                     });
                   } else if (selected.text === 'File Info') {
                     const DS = new DataStorage(() => {}, () => {}, false);
                     DS.getFile(f.path, (properties) => {
-                      console.log(properties);
                       var content = `<div style="font-size:90%"><h5>Name</h5><p>${f.name}</p><h5 style="margin-top:3px;">Path</h5><p>${f.path}</p><h5 style="margin-top:3px;">Last Modified</h5><p>${new Date(properties.lastModifiedDate).toLocaleString()}</p><h5 style="margin-top:3px;">Size</h5><p>${humanFileSize(properties.size)}</p></div>`;
                       this.$router.showDialog('File Info', content, null, 'Close', () => {}, ' ', () => {}, ' ', () => {}, () => {});
                       DS.destroy();
@@ -196,7 +239,22 @@ window.addEventListener("load", function() {
               }
             }
           },
-          center: function() {},
+          center: function() {
+            if (this.verticalNavIndex > -1 && this.data.files.length > 0) {
+              const f = this.data.files[this.verticalNavIndex];
+              if (f) {
+                const DS = new DataStorage(() => {}, () => {}, false);
+                DS.getFile(f.path, (blob) => {
+                  this.$router.showDialog('Confirm', 'Are you sure to upload this file ?', null, 'YES', () => {
+                    upload(this.$router, blob);
+                  }, 'Cancel', () => {}, ' ', () => {}, () => {});
+                  DS.destroy();
+                }, (_err) => {
+                  DS.destroy();
+                });
+              }
+            }
+          },
           right: function() {
             const searchDialog = Kai.createDialog('Search', '<div><input id="search-input" placeholder="Enter your keyword" class="kui-input" type="text" /></div>', null, '', undefined, '', undefined, '', undefined, undefined, this.$router);
             searchDialog.mounted = () => {
@@ -216,7 +274,6 @@ window.addEventListener("load", function() {
                       if (document.activeElement.value.length === 0) {
                         this.$router.hideBottomSheet();
                         setTimeout(() => {
-                          //this.methods.renderSoftKeyLCR();
                           SEARCH_INPUT.blur();
                         }, 100);
                       }
@@ -224,7 +281,6 @@ window.addEventListener("load", function() {
                     case 'SoftRight':
                       this.$router.hideBottomSheet();
                       setTimeout(() => {
-                        //this.methods.renderSoftKeyLCR();
                         SEARCH_INPUT.blur();
                         this.methods.search(SEARCH_INPUT.value);
                       }, 100);
@@ -232,7 +288,6 @@ window.addEventListener("load", function() {
                     case 'SoftLeft':
                       this.$router.hideBottomSheet();
                       setTimeout(() => {
-                        //this.methods.renderSoftKeyLCR();
                         SEARCH_INPUT.blur();
                       }, 100);
                       break
@@ -329,7 +384,7 @@ window.addEventListener("load", function() {
     name: 'home',
     data: {
       title: 'home',
-      authors: [],
+      archive: [],
       filtered: [],
     },
     verticalNavClass: '.homeNav',
@@ -344,35 +399,98 @@ window.addEventListener("load", function() {
         window.localStorage.setItem('APP_VERSION', APP_VERSION);
         return;
       }
+      this.methods.loadArchive();
     },
-    unmounted: function() {
-      
-    },
+    unmounted: function() {},
     methods: {
+      loadArchive: function() {
+        localforage.getItem('ARCHIVE')
+        .then((ARCHIVE) => {
+          var _archive = [];
+          for (var x in ARCHIVE) {
+            _archive.push({
+              name: ARCHIVE[x].metadata.name,
+              metadata: ARCHIVE[x].metadata,
+              url: ARCHIVE[x].url,
+            });
+          }
+          _archive.sort((a, b) => {
+            var dA = a.metadata.uploaded_at;
+            var dB = b.metadata.uploaded_at;
+            if (dA > dB)
+              return -1;
+            if (dA < dB)
+              return 1;
+            return 0;
+          });
+          if (this.verticalNavIndex + 1 > _archive.length)
+            this.verticalNavIndex--;
+          if (this.$router.stack.length === 1)
+            this.setData({archive: _archive, filtered: _archive });
+        });
+      },
       search: function(keyword) {
         this.verticalNavIndex = -1;
         if (keyword == null || keyword == '' || keyword.length == 0) {
-          this.setData({ filtered: this.data.authors });
+          this.setData({ filtered: this.data.archive });
           return;
         }
-        const result = this.data.authors.filter(author => author.name.toLowerCase().indexOf(keyword.toLowerCase()) >= 0);
+        const result = this.data.archive.filter(f => f.name.toLowerCase().indexOf(keyword.toLowerCase()) >= 0);
         this.setData({ filtered: result });
       },
-      getAuthor: function(author) {},
+      action: function(file) {
+        var menu = [
+          {'text': 'File Info'},
+          {'text': 'Share URL'},
+          {'text': 'Remove'},
+        ]
+        this.$router.showOptionMenu('More', menu, 'SELECT', (selected) => {
+          if (selected.text === 'File Info') {
+            var content = `<div style="font-size:90%"><h5>ID</h5><p>${file.metadata.id}</p><h5 style="margin-top:3px;">Name</h5><p>${file.metadata.name}</p><h5 style="margin-top:3px;">URL</h5><p>${file.url.short}</p><h5 style="margin-top:3px;">Uploaded At</h5><p>${new Date(file.metadata.uploaded_at).toLocaleString()}</p><h5 style="margin-top:3px;">Size</h5><p>${file.metadata.size.readable}</p></div>`;
+            setTimeout(() => {
+              this.$router.showDialog('File Info', content, null, 'Close', () => {}, ' ', () => {}, ' ', () => {}, () => {});
+            }, 200);
+          } else if (selected.text === 'Share URL') {
+            new MozActivity({
+              name: "new",
+              data: {
+                type: "websms/sms",
+                body: file.url.short,
+              }
+            });
+          } else if (selected.text === 'Remove') {
+            setTimeout(() => {
+              this.$router.showDialog('Confirm', `Are you sure to remove ${file.metadata.id} ?`, null, 'YES', () => {
+                localforage.getItem('ARCHIVE')
+                .then((ARCHIVE) => {
+                  if (ARCHIVE == null) {
+                    ARCHIVE = {};
+                  }
+                  delete ARCHIVE[file.metadata.id];
+                  return localforage.setItem('ARCHIVE', ARCHIVE);
+                })
+                .then(() => {
+                  this.methods.loadArchive();
+                })
+              }, 'Cancel', () => {}, ' ', () => {}, () => {});
+            }, 200);
+          }
+        }, () => {});
+      },
     },
-    softKeyText: { left: 'Menu', center: 'SELECT', right: 'Search' },
+    softKeyText: { left: 'Menu', center: 'MORE', right: 'Search' },
     softKeyListener: {
       left: function() {
         var menu = [
           {'text': 'Refresh Archive'},
           {'text': 'Files Archive'},
           {'text': 'Changelogs'},
+          {'text': 'Guide'},
           {'text': 'Exit'},
         ]
         this.$router.showOptionMenu('Menu', menu, 'SELECT', (selected) => {
           if (selected.text === 'Refresh Archive') {
             const DS = new DataStorage((fileRegistry, documentTree, groups) => {
-              console.log(groups);
               localforage.setItem('GROUPS', groups)
             }, (status) => {
               if (status) {
@@ -386,8 +504,8 @@ window.addEventListener("load", function() {
             this.$router.push('archievePage');
           } else if (selected.text === 'Changelogs') {
             this.$router.push('changelogs');
-          } else if (selected.text == 'Text-to-Speech Setting') {
-            this.$router.push('ttsSetting');
+          } else if (selected.text == 'Guide') {
+            this.$router.push('guide');
           } else if (selected.text === 'Exit') {
             window.close();
           }
@@ -395,7 +513,9 @@ window.addEventListener("load", function() {
       },
       center: function() {
         if (this.verticalNavIndex > -1 && this.data.filtered.length > 0) {
-          this.methods.getAuthor(this.data.filtered[this.verticalNavIndex]);
+          if (this.data.filtered[this.verticalNavIndex]) {
+            this.methods.action(this.data.filtered[this.verticalNavIndex]);
+          }
         }
       },
       right: function() {
@@ -417,7 +537,6 @@ window.addEventListener("load", function() {
                   if (document.activeElement.value.length === 0) {
                     this.$router.hideBottomSheet();
                     setTimeout(() => {
-                      //this.methods.renderSoftKeyLCR();
                       SEARCH_INPUT.blur();
                     }, 100);
                   }
@@ -425,7 +544,6 @@ window.addEventListener("load", function() {
                 case 'SoftRight':
                   this.$router.hideBottomSheet();
                   setTimeout(() => {
-                    //this.methods.renderSoftKeyLCR();
                     SEARCH_INPUT.blur();
                     this.methods.search(SEARCH_INPUT.value);
                   }, 100);
@@ -433,7 +551,6 @@ window.addEventListener("load", function() {
                 case 'SoftLeft':
                   this.$router.hideBottomSheet();
                   setTimeout(() => {
-                    //this.methods.renderSoftKeyLCR();
                     SEARCH_INPUT.blur();
                   }, 100);
                   break
@@ -483,6 +600,10 @@ window.addEventListener("load", function() {
       'changelogs' : {
         name: 'changelogs',
         component: changelogs
+      },
+      'guide' : {
+        name: 'guide',
+        component: guide
       }
     }
   });
