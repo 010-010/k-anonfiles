@@ -7,6 +7,12 @@
       padding:0px;
     }
   </style>
+  {{#empty}}
+    <div style="height:100%;text-align:center;font-weight:bold;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+      <div><p>Please Refresh Archive.</p><p>Goto Menu > Refresh Archive</p></div>
+    </div>
+  {{/empty}}
+  {{^empty}}
   <ul class="kui-list kai-container">
     {{#filtered}}
     <li class="archvNav kui-divider">
@@ -14,4 +20,5 @@
     </li>
     {{/filtered}}
   </ul>
+  {{/empty}}
 </div>

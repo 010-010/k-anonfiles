@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "name": "K-AnonFiles",
-  "description": "Unoffical AnonFiles client for KaiOS. Upload your files anonymously and free on AnonFiles. AnonFiles offer you 20 GB filesize limit and unlimited bandwidth",
+  "description": "Upload your files anonymously and free on AnonFiles up to 20 GB filesize limit and unlimited bandwidth. You can share the url via SMS/E-mail",
   "launch_path": "/index.html",
   "theme": "#873eff",
   "theme_color": "#873eff",
@@ -30,8 +30,8 @@
   "locales": {
     "en-US": {
       "name": "K-AnonFiles",
-      "subtitle": "Unoffical AnonFiles client for KaiOS. Upload your files anonymously and free on AnonFiles. AnonFiles offer you 20 GB filesize limit and unlimited bandwidth",
-      "description": "Unoffical AnonFiles client for KaiOS. Upload your files anonymously and free on AnonFiles. AnonFiles offer you 20 GB filesize limit and unlimited bandwidth"
+      "subtitle": "Unoffical AnonFiles client for KaiOS. Upload your files anonymously and free on AnonFiles up to 20 GB filesize limit and unlimited bandwidth. You can share the url via SMS/E-mail",
+      "description": "Upload your files anonymously and free on AnonFiles up to 20 GB filesize limit and unlimited bandwidth. You can share the url via SMS/E-mail"
     }
   },
   "default_locale": "en-US"

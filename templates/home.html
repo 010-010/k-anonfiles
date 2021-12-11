@@ -7,6 +7,12 @@
       text-overflow: ellipsis;
     }
   </style>
+  {{#empty}}
+    <div style="height:100%;text-align:center;font-weight:bold;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+      <div><p>Please read User Guide.</p><p>Goto Menu > Guide</p></div>
+    </div>
+  {{/empty}}
+  {{^empty}}
   <ul class="kui-list kai-container" style="font-size:14px;width:240px;">
     {{#filtered}}
     <li class="homeNav kui-divider">
@@ -14,4 +20,5 @@
     </li>
     {{/filtered}}
   </ul>
+  {{/empty}}
 </div>

@@ -155,7 +155,7 @@ window.addEventListener("load", function() {
     },
     templateUrl: document.location.origin + '/templates/guide.html',
     mounted: function() {
-      this.$router.setHeaderTitle('Guide');
+      this.$router.setHeaderTitle('User Guide');
     },
     unmounted: function() {},
     methods: {},
@@ -328,6 +328,7 @@ window.addEventListener("load", function() {
   const archievePage = new Kai({
     name: 'archieve',
     data: {
+      empty: true,
       archieve: {},
       filtered: [],
     },
@@ -344,7 +345,7 @@ window.addEventListener("load", function() {
         for (var x in GROUPS) {
           _filtered.push({name: x});
         }
-        this.setData({filtered: _filtered, archieve: GROUPS });
+        this.setData({filtered: _filtered, archieve: GROUPS, empty: Object.keys(GROUPS).length == 0 });
       });
     },
     unmounted: function() {},
@@ -384,6 +385,7 @@ window.addEventListener("load", function() {
     name: 'home',
     data: {
       title: 'home',
+      empty: true,
       archive: [],
       filtered: [],
     },
@@ -426,7 +428,7 @@ window.addEventListener("load", function() {
           if (this.verticalNavIndex + 1 > _archive.length)
             this.verticalNavIndex--;
           if (this.$router.stack.length === 1)
-            this.setData({archive: _archive, filtered: _archive });
+            this.setData({ archive: _archive, filtered: _archive, empty: _archive.length === 0 });
         });
       },
       search: function(keyword) {
@@ -441,7 +443,8 @@ window.addEventListener("load", function() {
       action: function(file) {
         var menu = [
           {'text': 'Open URL'},
-          {'text': 'Share URL'},
+          {'text': 'Share URL via SMS'},
+          {'text': 'Share URL via E-Mail'},
           {'text': 'File Info'},
           {'text': 'Remove'},
         ]
@@ -453,12 +456,13 @@ window.addEventListener("load", function() {
             setTimeout(() => {
               this.$router.showDialog('File Info', content, null, 'Close', () => {}, ' ', () => {}, ' ', () => {}, () => {});
             }, 200);
-          } else if (selected.text === 'Share URL') {
+          } else if (selected.text === 'Share URL via SMS' || selected.text === 'Share URL via E-Mail') {
             new MozActivity({
               name: "new",
               data: {
-                type: "websms/sms",
+                type: selected.text === 'Share URL via SMS' ? "websms/sms" : "mail",
                 body: file.url.short,
+                url: `mailto:?to=&subject=${file.metadata.name}&body=${encodeURIComponent(file.url.short)}`
               }
             });
           } else if (selected.text === 'Remove') {
@@ -487,8 +491,10 @@ window.addEventListener("load", function() {
         var menu = [
           {'text': 'Refresh Archive'},
           {'text': 'Files Archive'},
+          {'text': 'User Guide'},
+          {'text': 'AnonFiles FAQ'},
+          {'text': 'AnonFiles ToS'},
           {'text': 'Changelogs'},
-          {'text': 'Guide'},
           {'text': 'Exit'},
         ]
         this.$router.showOptionMenu('Menu', menu, 'SELECT', (selected) => {
@@ -507,8 +513,12 @@ window.addEventListener("load", function() {
             this.$router.push('archievePage');
           } else if (selected.text === 'Changelogs') {
             this.$router.push('changelogs');
-          } else if (selected.text == 'Guide') {
+          } else if (selected.text == 'User Guide') {
             this.$router.push('guide');
+          } else if (selected.text == 'AnonFiles FAQ') {
+            window.open('https://anonfiles.com/faq');
+          } else if (selected.text == 'AnonFiles ToS') {
+            window.open('https://anonfiles.com/terms');
           } else if (selected.text === 'Exit') {
             window.close();
           }
