@@ -440,12 +440,15 @@ window.addEventListener("load", function() {
       },
       action: function(file) {
         var menu = [
-          {'text': 'File Info'},
+          {'text': 'Open URL'},
           {'text': 'Share URL'},
+          {'text': 'File Info'},
           {'text': 'Remove'},
         ]
         this.$router.showOptionMenu('More', menu, 'SELECT', (selected) => {
-          if (selected.text === 'File Info') {
+          if (selected.text === 'Open URL') {
+            window.open(file.url.short)
+          } else if (selected.text === 'File Info') {
             var content = `<div style="font-size:90%"><h5>ID</h5><p>${file.metadata.id}</p><h5 style="margin-top:3px;">Name</h5><p>${file.metadata.name}</p><h5 style="margin-top:3px;">URL</h5><p>${file.url.short}</p><h5 style="margin-top:3px;">Uploaded At</h5><p>${new Date(file.metadata.uploaded_at).toLocaleString()}</p><h5 style="margin-top:3px;">Size</h5><p>${file.metadata.size.readable}</p></div>`;
             setTimeout(() => {
               this.$router.showDialog('File Info', content, null, 'Close', () => {}, ' ', () => {}, ' ', () => {}, () => {});
