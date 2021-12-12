@@ -15,47 +15,83 @@ function humanFileSize(bytes, si=false, dp=1) {
   return bytes.toFixed(dp) + ' ' + units[u];
 }
 
-const xhr = function(method, url, data={}, query={}, headers={}) {
-  url = `https://kaios.tri1.workers.dev/?url=${encodeURIComponent(url)}`;
-  return new Promise((resolve, reject) => {
-    var xhttp = new XMLHttpRequest();
-    var _url = new URL(url);
-    for (var y in query) {
-      _url.searchParams.set(y, query[y]);
-    }
-    url = _url.origin + _url.pathname + '?' + _url.searchParams.toString();
-    xhttp.onreadystatechange = function() {
-      if (this.readyState == 4) {
-        if (this.status >= 200 && this.status <= 299) {
-          try {
-            const response = JSON.parse(xhttp.response);
-            resolve({ raw: xhttp, response: response});
-          } catch (e) {
-            resolve({ raw: xhttp, response: xhttp.responseText});
+function ufileUpload($router, blob) {
+  console.log(blob);
+  $router.showLoading();
+  const init = new XMLHttpRequest({ mozSystem: true });
+  init.open("POST", "https://up.ufile.io/v1/upload/create_session");
+  init.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+  init.onreadystatechange = () => {
+    if (init.readyState === 4 && init.status == 200) {
+      const json = JSON.parse(init.responseText);
+      const upload = new XMLHttpRequest({ mozSystem: true });
+      const fd = new FormData();
+      fd.append("chunk_index", 1);
+      fd.append("fuid", json.fuid);
+      fd.append("file", blob);
+      upload.open("POST", 'https://up.ufile.io/v1/upload/chunk', true);
+      upload.send(fd);
+      upload.upload.onprogress = (evt) => {
+        if (evt.lengthComputable) {
+          var percentComplete = evt.loaded / evt.total * 100;
+          $router.showToast(`${percentComplete.toFixed(2)}%`);
+        }
+      };
+      upload.onerror = () => {
+        $router.hideLoading();
+      }
+      upload.onreadystatechange = () => {
+        if (upload.readyState == 4 && upload.status == 200) {
+          const response = JSON.parse(upload.responseText);
+          var finalize = new XMLHttpRequest({ mozSystem: true });
+          finalize.open("POST", "https://up.ufile.io/v1/upload/finalise");
+          finalize.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+          finalize.onreadystatechange = () => {
+            if (finalize.readyState === 4 && finalize.status == 200) {
+              $router.hideLoading();
+              console.log(finalize.status);
+              const response = JSON.parse(finalize.responseText);
+              console.log(response);
+              localforage.getItem('ARCHIVE')
+              .then((ARCHIVE) => {
+                if (ARCHIVE == null) {
+                  ARCHIVE = {};
+                }
+                response.uploaded_at = new Date().getTime();
+                ARCHIVE[response.id] = response;
+                $router.showToast('DONE');
+                return localforage.setItem('ARCHIVE', ARCHIVE);
+              });
+            }
+          };
+          var paths = blob.name.split('/');
+          var name = paths[paths.length - 1];
+          var type = 'other';
+          if (blob.type != '') {
+            var segs = blob.type.split('/');
+            type = segs[segs.length - 1];
           }
-        } else {
-          try {
-            const response = JSON.parse(xhttp.response);
-            reject({ raw: xhttp, response: response});
-          } catch (e) {
-            reject({ raw: xhttp, response: xhttp.responseText});
+          var data = `fuid=${json.fuid}&file_name=${name}&file_type=${type}&total_chunks=1`;
+          finalize.send(data);
+          finalize.onerror = () => {
+            $router.hideLoading();
+          }
+          finalize.onloadend = () => {
+            $router.hideLoading();
           }
         }
       }
-    };
-    xhttp.open(method, url, true);
-    for (var x in headers) {
-      xhttp.setRequestHeader(x, headers[x]);
     }
-    if (Object.keys(data).length > 0) {
-      xhttp.send(JSON.stringify(data));
-    } else {
-      xhttp.send();
-    }
-  });
+  };
+  var data = `file_size=${blob.size}`;
+  init.send(data);
+  init.onerror = () => {
+    $router.hideLoading();
+  }
 }
 
-function upload($router, blob) {
+function anonUpload($router, blob) {
+  return
   $router.showLoading();
   const client = new XMLHttpRequest({ mozSystem: true });
   const fd = new FormData();
@@ -246,7 +282,8 @@ window.addEventListener("load", function() {
                 const DS = new DataStorage(() => {}, () => {}, false);
                 DS.getFile(f.path, (blob) => {
                   this.$router.showDialog('Confirm', 'Are you sure to upload this file ?', null, 'YES', () => {
-                    upload(this.$router, blob);
+                    anonUpload(this.$router, blob);
+                    ufileUpload(this.$router, blob);
                   }, 'Cancel', () => {}, ' ', () => {}, () => {});
                   DS.destroy();
                 }, (_err) => {
@@ -393,7 +430,7 @@ window.addEventListener("load", function() {
     components: [],
     templateUrl: document.location.origin + '/templates/home.html',
     mounted: function() {
-      this.$router.setHeaderTitle('K-AnonFiles');
+      this.$router.setHeaderTitle('Kloud Storage');
       const CURRENT_VERSION = window.localStorage.getItem('APP_VERSION');
       if (APP_VERSION != CURRENT_VERSION) {
         this.$router.showToast(`Updated to version ${APP_VERSION}`);
@@ -410,11 +447,12 @@ window.addEventListener("load", function() {
         .then((ARCHIVE) => {
           var _archive = [];
           for (var x in ARCHIVE) {
-            _archive.push({
-              name: ARCHIVE[x].metadata.name,
-              metadata: ARCHIVE[x].metadata,
-              url: ARCHIVE[x].url,
-            });
+            ARCHIVE[x].expired_at = new Date(ARCHIVE[x].uploaded_at + 2592000000).getTime();
+            if (new Date().getTime() < ARCHIVE[x].expired_at) {
+              _archive.push({ name: ARCHIVE[x].name, metadata: ARCHIVE[x] });
+            } else {
+              delete ARCHIVE[x];
+            }
           }
           _archive.sort((a, b) => {
             var dA = a.metadata.uploaded_at;
@@ -429,6 +467,7 @@ window.addEventListener("load", function() {
             this.verticalNavIndex--;
           if (this.$router.stack.length === 1)
             this.setData({ archive: _archive, filtered: _archive, empty: _archive.length === 0 });
+          localforage.setItem('ARCHIVE', ARCHIVE);
         });
       },
       search: function(keyword) {
@@ -450,9 +489,9 @@ window.addEventListener("load", function() {
         ]
         this.$router.showOptionMenu('More', menu, 'SELECT', (selected) => {
           if (selected.text === 'Open URL') {
-            window.open(file.url.short)
+            window.open(file.metadata.url)
           } else if (selected.text === 'File Info') {
-            var content = `<div style="font-size:90%"><h5>ID</h5><p>${file.metadata.id}</p><h5 style="margin-top:3px;">Name</h5><p>${file.metadata.name}</p><h5 style="margin-top:3px;">URL</h5><p>${file.url.short}</p><h5 style="margin-top:3px;">Uploaded At</h5><p>${new Date(file.metadata.uploaded_at).toLocaleString()}</p><h5 style="margin-top:3px;">Size</h5><p>${file.metadata.size.readable}</p></div>`;
+            var content = `<div style="font-size:90%"><h5>ID</h5><p>${file.metadata.id}</p><h5 style="margin-top:3px;">Name</h5><p>${file.metadata.name}</p><h5 style="margin-top:3px;">URL</h5><p>${file.metadata.url}</p><h5 style="margin-top:3px;">Uploaded At</h5><p>${new Date(file.metadata.uploaded_at).toLocaleString()}</p><h5 style="margin-top:3px;">Size</h5><p>${file.metadata.size}</p><h5 style="margin-top:3px;">Expired</h5><p>${new Date(file.metadata.expired_at).toLocaleString()}</p></div>`;
             setTimeout(() => {
               this.$router.showDialog('File Info', content, null, 'Close', () => {}, ' ', () => {}, ' ', () => {}, () => {});
             }, 200);
@@ -461,13 +500,13 @@ window.addEventListener("load", function() {
               name: "new",
               data: {
                 type: selected.text === 'Share URL via SMS' ? "websms/sms" : "mail",
-                body: file.url.short,
-                url: `mailto:?to=&subject=${file.metadata.name}&body=${encodeURIComponent(file.url.short)}`
+                body: file.metadata.url,
+                url: `mailto:?to=&subject=${file.metadata.name}&body=${encodeURIComponent(file.metadata.url)}`
               }
             });
           } else if (selected.text === 'Remove') {
             setTimeout(() => {
-              this.$router.showDialog('Confirm', `Are you sure to remove ${file.metadata.id} ?`, null, 'YES', () => {
+              this.$router.showDialog('Confirm', `Are you sure to remove ${file.metadata.name} ?`, null, 'YES', () => {
                 localforage.getItem('ARCHIVE')
                 .then((ARCHIVE) => {
                   if (ARCHIVE == null) {
@@ -492,8 +531,8 @@ window.addEventListener("load", function() {
           {'text': 'Refresh Archive'},
           {'text': 'Files Archive'},
           {'text': 'User Guide'},
-          {'text': 'AnonFiles FAQ'},
-          {'text': 'AnonFiles ToS'},
+          //{'text': 'AnonFiles FAQ'},
+          //{'text': 'AnonFiles ToS'},
           {'text': 'Changelogs'},
           {'text': 'Exit'},
         ]
@@ -600,7 +639,7 @@ window.addEventListener("load", function() {
   });
 
   const router = new KaiRouter({
-    title: 'K-AnonFiles',
+    title: 'Kloud Storage',
     routes: {
       'index' : {
         name: 'Home',
@@ -654,7 +693,7 @@ window.addEventListener("load", function() {
       return;
     getKaiAd({
       publisher: 'ac3140f7-08d6-46d9-aa6f-d861720fba66',
-      app: 'k-anonfiles',
+      app: 'kloud-storage',
       slot: 'kaios',
       onerror: err => console.error(err),
       onready: ad => {

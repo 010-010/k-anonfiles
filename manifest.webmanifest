@@ -1,8 +1,8 @@
 {
   "lang": "en-US",
-  "id": "K-AnonFiles",
-  "name": "K-AnonFiles",
-  "description": "Upload your files anonymously and free on AnonFiles up to 20 GB filesize limit and unlimited bandwidth. You can share the url via SMS/E-mail",
+  "id": "Kloud Storage",
+  "name": "Kloud Storage",
+  "description": "NO SIGNUP REQUIRED. Free file sharing service with unlimited bandwidth, upload files securely & anonymously. You also can share the file url via SMS/E-mail",
   "theme": "#873eff",
   "theme_color": "#873eff",
   "background_color": "#873eff",
@@ -32,7 +32,7 @@
       "name": "arma7x",
       "url": "https://www.kaiostech.com"
     },
-    "origin": "k-anonfiles",
+    "origin": "kloud-storage",
     "permissions": {
       "device-storage:sdcard":{
         "access": "readwrite"
@@ -43,9 +43,9 @@
     },
     "locales": {
       "en-US": {
-        "name": "K-AnonFiles",
-        "subtitle": "Unoffical AnonFiles client for KaiOS. Upload your files anonymously and free on AnonFiles up to 20 GB filesize limit and unlimited bandwidth. You can share the url via SMS/E-mail",
-        "description": "Upload your files anonymously and free on AnonFiles up to 20 GB filesize limit and unlimited bandwidth. You can share the url via SMS/E-mail"
+        "name": "Kloud Storage",
+        "subtitle": "NO SIGNUP REQUIRED. Free file sharing service with unlimited bandwidth, upload files securely & anonymously. You also can share the file url via SMS/E-mail",
+        "description": "NO SIGNUP REQUIRED. Free file sharing service with unlimited bandwidth, upload files securely & anonymously. You also can share the file url via SMS/E-mail"
       }
     }
   }
