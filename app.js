@@ -16,7 +16,6 @@ function humanFileSize(bytes, si=false, dp=1) {
 }
 
 function ufileUpload($router, blob) {
-  console.log(blob);
   $router.showLoading();
   const init = new XMLHttpRequest({ mozSystem: true });
   init.open("POST", "https://up.ufile.io/v1/upload/create_session");
@@ -49,9 +48,7 @@ function ufileUpload($router, blob) {
           finalize.onreadystatechange = () => {
             if (finalize.readyState === 4 && finalize.status == 200) {
               $router.hideLoading();
-              console.log(finalize.status);
               const response = JSON.parse(finalize.responseText);
-              console.log(response);
               localforage.getItem('ARCHIVE')
               .then((ARCHIVE) => {
                 if (ARCHIVE == null) {
@@ -250,13 +247,16 @@ window.addEventListener("load", function() {
                   if (selected.text === 'Open') {
                     const DS = new DataStorage(() => {}, () => {}, false);
                     DS.getFile(f.path, (properties) => {
-                      var _launcher = new MozActivity({
+                      var Xtvt = navigator.b2g ? WebActivity : MozActivity;
+                      const x = new Xtvt({
                         name: "open",
                         data: {
                           blob: properties,
                           type: properties.type
                         }
                       });
+                      if (navigator.b2g)
+                        x.start();
                       DS.destroy();
                     }, (_err) => {
                       DS.destroy();
@@ -264,7 +264,7 @@ window.addEventListener("load", function() {
                   } else if (selected.text === 'File Info') {
                     const DS = new DataStorage(() => {}, () => {}, false);
                     DS.getFile(f.path, (properties) => {
-                      var content = `<div style="font-size:90%"><h5>Name</h5><p>${f.name}</p><h5 style="margin-top:3px;">Path</h5><p>${f.path}</p><h5 style="margin-top:3px;">Last Modified</h5><p>${new Date(properties.lastModifiedDate).toLocaleString()}</p><h5 style="margin-top:3px;">Size</h5><p>${humanFileSize(properties.size)}</p></div>`;
+                      var content = `<div style="font-size:90%"><h5>Name</h5><p>${f.name}</p><h5 style="margin-top:3px;">Path</h5><p>${f.path}</p><h5 style="margin-top:3px;">Last Modified</h5><p>${new Date(properties.lastModifiedDate || properties.lastModified).toLocaleString()}</p><h5 style="margin-top:3px;">Size</h5><p>${humanFileSize(properties.size)}</p></div>`;
                       this.$router.showDialog('File Info', content, null, 'Close', () => {}, ' ', () => {}, ' ', () => {}, () => {});
                       DS.destroy();
                     }, () => {
@@ -496,7 +496,8 @@ window.addEventListener("load", function() {
               this.$router.showDialog('File Info', content, null, 'Close', () => {}, ' ', () => {}, ' ', () => {}, () => {});
             }, 200);
           } else if (selected.text === 'Share URL via SMS' || selected.text === 'Share URL via E-Mail') {
-            new MozActivity({
+            var Xtvt = navigator.b2g ? WebActivity : MozActivity;
+            const x = new Xtvt({
               name: "new",
               data: {
                 type: selected.text === 'Share URL via SMS' ? "websms/sms" : "mail",
@@ -504,6 +505,8 @@ window.addEventListener("load", function() {
                 url: `mailto:?to=&subject=${file.metadata.name}&body=${encodeURIComponent(file.metadata.url)}`
               }
             });
+            if (navigator.b2g)
+              x.start();
           } else if (selected.text === 'Remove') {
             setTimeout(() => {
               this.$router.showDialog('Confirm', `Are you sure to remove ${file.metadata.name} ?`, null, 'YES', () => {
