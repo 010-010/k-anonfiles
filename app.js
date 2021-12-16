@@ -247,16 +247,12 @@ window.addEventListener("load", function() {
                   if (selected.text === 'Open') {
                     const DS = new DataStorage(() => {}, () => {}, false);
                     DS.getFile(f.path, (properties) => {
-                      var Xtvt = navigator.b2g ? WebActivity : MozActivity;
-                      const x = new Xtvt({
-                        name: "open",
-                        data: {
-                          blob: properties,
-                          type: properties.type
-                        }
-                      });
-                      if (navigator.b2g)
+                      if (navigator.b2g) {
+                        const x = new WebActivity("open", { blob: properties, type: properties.type });
                         x.start();
+                      } else {
+                        const x = new MozActivity({ name: "open", data: { blob: properties, type: properties.type }});
+                      }
                       DS.destroy();
                     }, (_err) => {
                       DS.destroy();
