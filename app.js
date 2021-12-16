@@ -496,17 +496,15 @@ window.addEventListener("load", function() {
               this.$router.showDialog('File Info', content, null, 'Close', () => {}, ' ', () => {}, ' ', () => {}, () => {});
             }, 200);
           } else if (selected.text === 'Share URL via SMS' || selected.text === 'Share URL via E-Mail') {
-            var Xtvt = navigator.b2g ? WebActivity : MozActivity;
-            const x = new Xtvt({
-              name: "new",
-              data: {
-                type: selected.text === 'Share URL via SMS' ? "websms/sms" : "mail",
-                body: file.metadata.url,
-                url: `mailto:?to=&subject=${file.metadata.name}&body=${encodeURIComponent(file.metadata.url)}`
-              }
-            });
-            if (navigator.b2g)
-              x.start();
+            if (selected.text === 'Share URL via SMS') {
+              const xtvt = document.getElementById('xtvt_sms');
+              xtvt.href = `sms:?&body=${encodeURIComponent(file.metadata.url)}`;
+              xtvt.click();
+            } else {
+              const xtvt = document.getElementById('xtvt_email');
+              xtvt.href = `mailto:?to=&subject=${file.metadata.name}&body=${encodeURIComponent(file.metadata.url)}`;
+              xtvt.click();
+            }
           } else if (selected.text === 'Remove') {
             setTimeout(() => {
               this.$router.showDialog('Confirm', `Are you sure to remove ${file.metadata.name} ?`, null, 'YES', () => {
